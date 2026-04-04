@@ -9,6 +9,7 @@
 在开始运行之前，请确保你的系统已配置好 Go 编译环境及 CGO 支持。
 
 ### 1. 安装基础依赖
+
 ```bash
 # 更新系统包管理器
 sudo apt update && sudo apt upgrade -y
@@ -21,7 +22,7 @@ sudo apt install gcc -y
 
 ```bash
 # 下载 Go 1.26.1
-wget [https://go.dev/dl/go1.26.1.linux-amd64.tar.gz](https://go.dev/dl/go1.26.1.linux-amd64.tar.gz)
+wget https://go.dev/dl/go1.26.1.linux-amd64.tar.gz
 sudo tar -C /usr/local -xzf go1.26.1.linux-amd64.tar.gz
 
 # 配置环境变量 (写入 .bashrc)
@@ -34,7 +35,7 @@ source ~/.bashrc
 go version
 ```
 
-------
+---
 
 ## 🛠️ 项目初始化与编译
 
@@ -65,7 +66,7 @@ GO111MODULE=off go build -buildmode=plugin -o wc.so ../mrapps/wc.go
 }
 ```
 
-------
+---
 
 ## 💻 运行演示
 
@@ -79,7 +80,7 @@ GO111MODULE=off go run mrmaster.go data/pg-*.txt
 
 <img src="./assets/images/master.png" alt="master" style="zoom: 50%;" />
 
-------
+---
 
 ### 第二步：启动 Worker 节点
 
@@ -93,7 +94,7 @@ GO111MODULE=off go run mrworker.go wc.so
 
 <img src="./assets/images/worker2.png" alt="master" style="zoom: 50%;" />
 
-------
+---
 
 ### 第三步：结果验证
 
@@ -107,7 +108,7 @@ ls output/
 cat output/mr-out-* | sort -k2nr | head -n 10
 ```
 
-------
+---
 
 ## ⚠️ 注意事项
 
