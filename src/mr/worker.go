@@ -117,6 +117,11 @@ func HandleReduceTask(reply *MyReply, reducef func(string, []string) string) err
 	sort.Strings(keys)
 
 	outputDir := "output"
+	err = os.MkdirAll(outputDir, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create directory %s: %v", outputDir, err)
+	}
+
 	oname := filepath.Join(outputDir, "mr-out-"+strconv.Itoa(reply.TaskID))
 
 	ofile, err := os.Create(oname)
