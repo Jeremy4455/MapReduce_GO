@@ -54,10 +54,8 @@ func (m *Master) server() {
 	go http.Serve(l, nil)
 }
 
-// main/mrmaster.go calls Done() periodically to find out
-// if the entire job has finished.
+// main/mrmaster.go calls Done() periodically to find out if the entire job has finished.
 func (m *Master) Done() bool {
-	// Your code here.
 	for _, t := range m.MapTasks {
 		if t.Status != finished {
 			return false
@@ -70,6 +68,7 @@ func (m *Master) Done() bool {
 		}
 	}
 
+	log.Println("[MASTER] All tasks finished. System exiting...")
 	return true
 }
 
@@ -78,10 +77,12 @@ func (m *Master) NoticeResult(args *MyArgs, reply *MyReply) error {
 	case MapSuccess:
 		{
 			m.muMap.Lock()
+			defer m.muMap.Unlock()
 			for _, v := range m.MapTasks {
 				if v.TaskId == args.TaskID && v.Status == running {
 					v.Status = finished
-					m.muMap.Unlock()
+					// m.muMap.Unlock()
+					log.Printf("[MAP] Task %d finished successfully.\n", args.TaskID)
 					return nil
 				}
 			}
@@ -89,17 +90,21 @@ func (m *Master) NoticeResult(args *MyArgs, reply *MyReply) error {
 	case ReduceSuccess:
 		{
 			m.muReduce.Lock()
+			defer m.muReduce.Unlock()
 			m.ReduceTasks[args.TaskID].Status = finished
-			m.muReduce.Unlock()
+			// m.muReduce.Unlock()
+			log.Printf("[REDUCE] Task %d finished successfully.\n", args.TaskID)
 			return nil
 		}
 	case MapFailed:
 		{
 			m.muMap.Lock()
+			defer m.muReduce.Unlock()
+			log.Printf("[MAP] Task %d reported FAILED by worker.\n", args.TaskID)
 			for _, v := range m.MapTasks {
 				if v.TaskId == args.TaskID && v.Status == running {
 					v.Status = failed
-					m.muMap.Unlock()
+					// m.muMap.Unlock()
 					return nil
 				}
 			}
@@ -107,10 +112,12 @@ func (m *Master) NoticeResult(args *MyArgs, reply *MyReply) error {
 	case ReduceFailed:
 		{
 			m.muReduce.Lock()
+			defer m.muMap.Unlock()
+			log.Printf("[REDUCE] Task %d reported FAILED by worker.\n", args.TaskID)
 			if m.ReduceTasks[args.TaskID].Status == running {
 				m.ReduceTasks[args.TaskID].Status = failed
 			}
-			m.muReduce.Unlock()
+			// m.muReduce.Unlock()
 			return nil
 		}
 	}
@@ -136,6 +143,7 @@ func (m *Master) AskForTask(args *MyArgs, reply *MyReply) error {
 			} else if taskInfo.Status == running {
 				curTime := time.Now().Unix()
 				if curTime-taskInfo.StartTime > maxTimePeriod {
+					log.Printf("[TIMEOUT] Map Task %d timed out, reassigning...\n", taskInfo.TaskId)
 					alloc = true
 				}
 			} else {
@@ -150,6 +158,7 @@ func (m *Master) AskForTask(args *MyArgs, reply *MyReply) error {
 
 				taskInfo.Status = running
 				taskInfo.StartTime = time.Now().Unix()
+				log.Printf("[ALLOC] Assigned Map Task %d for file %s\n", taskInfo.TaskId, fileName)
 				m.muMap.Unlock()
 				return nil
 			}
@@ -161,6 +170,7 @@ func (m *Master) AskForTask(args *MyArgs, reply *MyReply) error {
 			return nil
 		} else {
 			m.MapSuccess = true
+			log.Println("[PHASE] Map phase completed. Starting Reduce phase...")
 		}
 	}
 
@@ -175,6 +185,7 @@ func (m *Master) AskForTask(args *MyArgs, reply *MyReply) error {
 			} else if taskInfo.Status == running {
 				curTime := time.Now().Unix()
 				if curTime-taskInfo.StartTime > maxTimePeriod {
+					log.Printf("[TIMEOUT] Reduce Task %d timed out, reassigning...\n", idx)
 					alloc = true
 				}
 			} else {
@@ -188,6 +199,7 @@ func (m *Master) AskForTask(args *MyArgs, reply *MyReply) error {
 				taskInfo.Status = running
 				taskInfo.StartTime = time.Now().Unix()
 
+				log.Printf("[ALLOC] Assigned Reduce Task %d\n", idx)
 				m.muReduce.Unlock()
 				return nil
 			}
@@ -199,6 +211,7 @@ func (m *Master) AskForTask(args *MyArgs, reply *MyReply) error {
 			return nil
 		} else {
 			m.ReduceSuccess = true
+			log.Println("[PHASE] Reduce phase completed.")
 		}
 	}
 
@@ -232,7 +245,6 @@ func MakeMaster(files []string, nReduce int) *Master {
 	}
 
 	m.initTask(files)
-	// Your code here.
 
 	m.server()
 	return &m

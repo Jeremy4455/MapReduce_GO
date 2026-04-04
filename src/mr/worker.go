@@ -41,6 +41,7 @@ func ihash(key string) int {
 func Worker(masterAddr string, mapf func(string, string) []KeyValue,
 	reducef func(string, []string) string) {
 
+	log.Printf("[WORKER] Worker pid=%d started, connecting to %s\n", os.Getpid(), masterAddr)
 	// Your worker implementation here.
 	for {
 		reply := CallForATask(masterAddr)
@@ -48,29 +49,38 @@ func Worker(masterAddr string, mapf func(string, string) []KeyValue,
 			switch reply.MsgType {
 			case MapTaskAlloc:
 				{
+					log.Printf("[MAP-START] TaskID: %d, Input: %s\n", reply.TaskID, reply.TaskName)
 					err := HandleMapTask(reply, mapf)
 					if err != nil {
+						log.Printf("[MAP-ERROR] TaskID: %d, Error: %v\n", reply.TaskID, err)
 						CallForReportStatus(masterAddr, MapFailed, reply.TaskID)
 					} else {
+						log.Printf("[MAP-DONE] TaskID: %d completed\n", reply.TaskID)
 						CallForReportStatus(masterAddr, MapSuccess, reply.TaskID)
 					}
 				}
 			case ReduceTaskAlloc:
 				{
+					log.Printf("[REDUCE-START] TaskID: %d\n", reply.TaskID)
 					err := HandleReduceTask(reply, reducef)
 					if err != nil {
+						log.Printf("[REDUCE-ERROR] TaskID: %d, Error: %v\n", reply.TaskID, err)
 						CallForReportStatus(masterAddr, ReduceFailed, reply.TaskID)
 					} else {
+						log.Printf("[REDUCE-DONE] TaskID: %d completed\n", reply.TaskID)
 						CallForReportStatus(masterAddr, ReduceSuccess, reply.TaskID)
 					}
 				}
 			case Wait:
 				time.Sleep(time.Second * 10)
 			case Shutdown:
+				log.Println("[WORKER] Received shutdown signal. Exiting.")
 				os.Exit(0)
 			}
+		} else {
+			time.Sleep(time.Second * 2)
 		}
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 500)
 	}
 	// uncomment to send the Example RPC to the master.
 	// CallExample()
