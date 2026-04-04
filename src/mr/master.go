@@ -77,11 +77,11 @@ func (m *Master) NoticeResult(args *MyArgs, reply *MyReply) error {
 	case MapSuccess:
 		{
 			m.muMap.Lock()
-			defer m.muMap.Unlock()
+			// defer m.muMap.Unlock()
 			for _, v := range m.MapTasks {
 				if v.TaskId == args.TaskID && v.Status == running {
 					v.Status = finished
-					// m.muMap.Unlock()
+					m.muMap.Unlock()
 					log.Printf("[MAP] Task %d finished successfully.\n", args.TaskID)
 					return nil
 				}
@@ -90,21 +90,21 @@ func (m *Master) NoticeResult(args *MyArgs, reply *MyReply) error {
 	case ReduceSuccess:
 		{
 			m.muReduce.Lock()
-			defer m.muReduce.Unlock()
+			// defer m.muReduce.Unlock()
 			m.ReduceTasks[args.TaskID].Status = finished
-			// m.muReduce.Unlock()
+			m.muReduce.Unlock()
 			log.Printf("[REDUCE] Task %d finished successfully.\n", args.TaskID)
 			return nil
 		}
 	case MapFailed:
 		{
 			m.muMap.Lock()
-			defer m.muReduce.Unlock()
+			// defer m.muReduce.Unlock()
 			log.Printf("[MAP] Task %d reported FAILED by worker.\n", args.TaskID)
 			for _, v := range m.MapTasks {
 				if v.TaskId == args.TaskID && v.Status == running {
 					v.Status = failed
-					// m.muMap.Unlock()
+					m.muMap.Unlock()
 					return nil
 				}
 			}
@@ -112,12 +112,12 @@ func (m *Master) NoticeResult(args *MyArgs, reply *MyReply) error {
 	case ReduceFailed:
 		{
 			m.muReduce.Lock()
-			defer m.muMap.Unlock()
+			// defer m.muMap.Unlock()
 			log.Printf("[REDUCE] Task %d reported FAILED by worker.\n", args.TaskID)
 			if m.ReduceTasks[args.TaskID].Status == running {
 				m.ReduceTasks[args.TaskID].Status = failed
 			}
-			// m.muReduce.Unlock()
+			m.muReduce.Unlock()
 			return nil
 		}
 	}
